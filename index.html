@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapchat Bild-Formatierer</title>
+    <style>
+        /* ===== CSS Reset und Basis-Styles ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        /* ===== Container Layout ===== */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ===== Header ===== */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #FFFC00, #FF9500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+
+        /* ===== Upload-Bereich ===== */
+        .upload-zone {
+            border: 2px dashed #4a5568;
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #FFFC00;
+            background: rgba(255, 252, 0, 0.05);
+        }
+
+        .upload-zone svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            color: #8892b0;
+        }
+
+        .upload-zone p {
+            color: #8892b0;
+            margin-bottom: 8px;
+        }
+
+        .upload-zone .hint {
+            font-size: 0.8rem;
+            color: #4a5568;
+        }
+
+        /* Versteckter File-Input */
+        #file-input {
+            display: none;
+        }
+
+        /* ===== Optionen-Panel ===== */
+        .options-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .options-title {
+            font-size: 0.85rem;
+            color: #8892b0;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .crop-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .crop-option {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 16px;
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            background: transparent;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .crop-option:hover {
+            border-color: #8892b0;
+        }
+
+        .crop-option.active {
+            border-color: #FFFC00;
+            background: rgba(255, 252, 0, 0.1);
+        }
+
+        .crop-option-icon {
+            display: block;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        /* ===== Vorschau-Bereich ===== */
+        .preview-section {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .preview-section.visible {
+            display: block;
+        }
+
+        .preview-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .preview-box {
+            text-align: center;
+        }
+
+        .preview-label {
+            font-size: 0.8rem;
+            color: #8892b0;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .preview-frame {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Original-Vorschau (kleiner) */
+        .preview-original .preview-frame {
+            width: 120px;
+            height: 213px; /* 9:16 Verhältnis */
+        }
+
+        /* Ergebnis-Vorschau (größer) */
+        .preview-result .preview-frame {
+            width: 180px;
+            height: 320px; /* 9:16 Verhältnis */
+            border: 2px solid #FFFC00;
+        }
+
+        .preview-frame img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* ===== Ladeindikator ===== */
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loader.visible {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #4a5568;
+            border-top-color: #FFFC00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader p {
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+
+        /* ===== Buttons ===== */
+        .button-group {
+            display: none;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .button-group.visible {
+            display: flex;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #FFFC00, #FF9500);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 252, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* ===== Dateiinfo ===== */
+        .file-info {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #8892b0;
+        }
+
+        .file-info.visible {
+            display: block;
+        }
+
+        .file-info strong {
+            color: #ffffff;
+        }
+
+        /* ===== Fehlermeldung ===== */
+        .error-message {
+            display: none;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+            font-size: 0.9rem;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        /* ===== Responsive Design ===== */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .upload-zone {
+                padding: 30px 15px;
+            }
+
+            .crop-option {
+                min-width: 80px;
+                padding: 10px 12px;
+                font-size: 0.8rem;
+            }
+
+            .preview-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .preview-original .preview-frame {
+                width: 100px;
+                height: 178px;
+            }
+
+            .preview-result .preview-frame {
+                width: 160px;
+                height: 284px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Snapchat Formatierer</h1>
+            <p class="subtitle">Optimiert für Snapchat (1080 × 1920)</p>
+        </header>
+
+        <!-- Upload-Bereich -->
+        <div class="upload-zone" id="upload-zone">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p>Bild hierher ziehen oder klicken</p>
+            <span class="hint">JPG, PNG, WebP unterstützt</span>
+        </div>
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
+
+        <!-- Fehlermeldung -->
+        <div class="error-message" id="error-message"></div>
+
+        <!-- Dateiinfo -->
+        <div class="file-info" id="file-info">
+            <strong id="file-name"></strong> — <span id="file-dimensions"></span>
+        </div>
+
+        <!-- Optionen-Panel -->
+        <div class="options-panel">
+            <div class="options-title">Zuschnitt-Modus</div>
+            <div class="crop-options">
+                <button class="crop-option active" data-mode="center">
+                    <span class="crop-option-icon">⬛</span>
+                    Zentriert
+                </button>
+                <button class="crop-option" data-mode="top">
+                    <span class="crop-option-icon">⬆️</span>
+                    Oben
+                </button>
+                <button class="crop-option" data-mode="bottom">
+                    <span class="crop-option-icon">⬇️</span>
+                    Unten
+                </button>
+            </div>
+        </div>
+
+        <!-- Ladeindikator -->
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>Bild wird verarbeitet...</p>
+        </div>
+
+        <!-- Vorschau-Bereich -->
+        <section class="preview-section" id="preview-section">
+            <div class="preview-container">
+                <div class="preview-box preview-original">
+                    <div class="preview-label">Original</div>
+                    <div class="preview-frame">
+                        <img id="preview-original" alt="Original">
+                    </div>
+                </div>
+                <div class="preview-box preview-result">
+                    <div class="preview-label">Ergebnis</div>
+                    <div class="preview-frame">
+                        <img id="preview-result" alt="Ergebnis">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Buttons -->
+        <div class="button-group" id="button-group">
+            <a class="btn btn-primary" id="download-btn" download="snapchat-image.jpg">
+                Herunterladen
+            </a>
+            <button class="btn btn-secondary" id="reset-btn">
+                Neues Bild
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ===== DOM-Elemente =====
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const fileDimensions = document.getElementById('file-dimensions');
+        const cropOptions = document.querySelectorAll('.crop-option');
+        const loader = document.getElementById('loader');
+        const previewSection = document.getElementById('preview-section');
+        const previewOriginal = document.getElementById('preview-original');
+        const previewResult = document.getElementById('preview-result');
+        const buttonGroup = document.getElementById('button-group');
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        // ===== State =====
+        let currentFile = null;
+        let currentMode = 'center';
+
+        // ===== Event Listeners =====
+
+        // Klick auf Upload-Zone öffnet Dateiauswahl
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        // Datei ausgewählt
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Drag & Drop Events
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Zuschnitt-Modus wechseln
+        cropOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                // Aktiven Status aktualisieren
+                cropOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+
+                // Modus speichern und Bild neu verarbeiten
+                currentMode = option.dataset.mode;
+
+                if (currentFile) {
+                    processImage(currentFile);
+                }
+            });
+        });
+
+        // Reset-Button
+        resetBtn.addEventListener('click', resetUI);
+
+        // ===== Funktionen =====
+
+        /**
+         * Verarbeitet eine hochgeladene Datei
+         * @param {File} file - Die hochgeladene Bilddatei
+         */
+        function handleFile(file) {
+            // Prüfen ob es ein Bild ist
+            if (!file.type.startsWith('image/')) {
+                showError('Bitte nur Bilddateien hochladen.');
+                return;
+            }
+
+            hideError();
+            currentFile = file;
+
+            // Dateiname anzeigen
+            fileName.textContent = file.name;
+
+            // Original-Vorschau setzen
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewOriginal.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Bild zum Server senden
+            processImage(file);
+        }
+
+        /**
+         * Sendet das Bild zur Verarbeitung an den Server
+         * @param {File} file - Die zu verarbeitende Bilddatei
+         */
+        async function processImage(file) {
+            showLoader();
+            hideError();
+
+            try {
+                // FormData erstellen
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('mode', currentMode);
+
+                // An Server senden
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Unbekannter Fehler');
+                }
+
+                // Dateiinfo aktualisieren
+                fileDimensions.textContent = `${result.info.original_width} × ${result.info.original_height} → 1080 × 1920`;
+                fileInfo.classList.add('visible');
+
+                // Ergebnis-Vorschau setzen
+                previewResult.src = result.image;
+
+                // Download-Link aktualisieren
+                downloadBtn.href = result.image;
+
+                // UI aktualisieren
+                hideLoader();
+                previewSection.classList.add('visible');
+                buttonGroup.classList.add('visible');
+
+            } catch (error) {
+                hideLoader();
+                showError(`Fehler: ${error.message}`);
+                console.error('Verarbeitungsfehler:', error);
+            }
+        }
+
+        /**
+         * Zeigt den Ladeindikator
+         */
+        function showLoader() {
+            loader.classList.add('visible');
+            previewSection.classList.remove('visible');
+            buttonGroup.classList.remove('visible');
+        }
+
+        /**
+         * Versteckt den Ladeindikator
+         */
+        function hideLoader() {
+            loader.classList.remove('visible');
+        }
+
+        /**
+         * Zeigt eine Fehlermeldung
+         * @param {string} message - Die Fehlermeldung
+         */
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('visible');
+        }
+
+        /**
+         * Versteckt die Fehlermeldung
+         */
+        function hideError() {
+            errorMessage.classList.remove('visible');
+        }
+
+        /**
+         * Setzt die UI auf den Ausgangszustand zurück
+         */
+        function resetUI() {
+            currentFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('visible');
+            previewSection.classList.remove('visible');
+            buttonGroup.classList.remove('visible');
+            previewOriginal.src = '';
+            previewResult.src = '';
+            downloadBtn.href = '';
+            hideError();
+        }
+    </script>
+</body>
+</html>
